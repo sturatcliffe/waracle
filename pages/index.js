@@ -1,65 +1,43 @@
-import Head from 'next/head'
-import styles from '../styles/Home.module.css'
+import useSWR from "swr";
+import fetcher from "../lib/fetcher";
+import { useUser } from "../lib/user";
+import Loader from "../components/Loader";
+import Cat from "../components/Cat";
 
 export default function Home() {
+  const user = useUser();
+
+  const { data: cats, error: catsError } = useSWR(
+    "/images?order=asc&limit=100",
+    fetcher
+  );
+  const { data: favourites, error: favouritesError } = useSWR(
+    user ? `/favourites?sub_id=${user}` : null,
+    fetcher
+  );
+  const { data: votes, error: votesError } = useSWR("/votes", fetcher);
+
+  if (catsError || favouritesError || votesError) {
+    return (
+      <div className="m-4 md:mx-auto md:max-w-xl border border-red-800 bg-red-300 text-red-800 p-4">
+        There was a problem communicating with the Cats API. Please make sure
+        you have an active internet connection.
+      </div>
+    );
+  }
+
+  if (!cats || !favourites || !votes) return <Loader />;
+
   return (
-    <div className={styles.container}>
-      <Head>
-        <title>Create Next App</title>
-        <link rel="icon" href="/favicon.ico" />
-      </Head>
-
-      <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.js</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h3>Documentation &rarr;</h3>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h3>Learn &rarr;</h3>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/master/examples"
-            className={styles.card}
-          >
-            <h3>Examples &rarr;</h3>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h3>Deploy &rarr;</h3>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <img src="/vercel.svg" alt="Vercel Logo" className={styles.logo} />
-        </a>
-      </footer>
+    <div className="flex flex-wrap items-center justify-center">
+      {cats.map((cat) => (
+        <Cat
+          key={cat.id}
+          cat={cat}
+          favourite={favourites.find((x) => x.image_id === cat.id)}
+          votes={votes.filter((x) => x.image_id === cat.id)}
+        />
+      ))}
     </div>
-  )
+  );
 }
